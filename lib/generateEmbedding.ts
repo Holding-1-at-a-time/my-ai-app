@@ -1,5 +1,5 @@
 // /lib/generateEmbedding.ts
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 
 /**
  * Generates an embedding for a given text using the Nomic Embeddings API.
@@ -27,8 +27,14 @@ export async function generateEmbedding(text: string): Promise<number[]> {
         // Return the generated embedding
         return embedding;
     } catch (error) {
-        // Log the error to the console
-        console.error('Embedding generation failed:', error);
+        if (axios.isAxiosError(error)) {
+            // If the error is an AxiosError, log the error message
+            console.error('Embedding generation failed:', error.message);
+        } else {
+            // If the error is not an AxiosError, log the error object
+            console.error('Embedding generation failed:', error);
+        }
+
         // Throw an error to propagate the failure
         throw new Error('Failed to generate embedding');
     }

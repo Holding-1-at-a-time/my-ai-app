@@ -1,5 +1,5 @@
 // /lib/apiClient.ts
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 
 /**
  * Creates an instance of Axios with the configuration needed for the Ollama API.
@@ -42,11 +42,18 @@ export const apiClient = axios.create({
      * @param headers - The headers of the request.
      * @returns The transformed data.
      */
-    transformRequest: (data, headers) => {
-        /**
-         * Stringify the data to JSON.
-         */
-        return JSON.stringify(data);
+    transformRequest: async (data, headers) => {
+        try {
+            // Ensure headers contain the correct content type
+            if (headers) {
+                headers['Content-Type'] = 'application/json';
+            }
+            // Stringify the data to JSON
+            return JSON.stringify(await data);
+        } catch (error) {
+            console.error('Error transforming request data:', error);
+            throw new Error('Failed to transform request data');
+        }
     },
 
     /**
@@ -55,11 +62,14 @@ export const apiClient = axios.create({
      * @param response - The response data.
      * @returns The transformed data.
      */
-    transformResponse: (response) => {
-        /**
-         * Parse the response data as JSON.
-         */
-        return JSON.parse(response);
+    transformResponse: async (response) => {
+        try {
+            // Parse the response data as JSON
+            return JSON.parse(await response);
+        } catch (error) {
+            console.error('Error transforming response data:', error);
+            throw new Error('Failed to transform response data');
+        }
     },
 
     /**
@@ -69,19 +79,33 @@ export const apiClient = axios.create({
      * @returns `true` if the status code is valid, `false` otherwise.
      */
     validateStatus: (status) => {
-        /**
-         * Validate the status code if it is between 200 and 500.
-         */
-        return status >= 200 && status < 500;
+        // Validate the status code if it is between 200 and 500
+        return (status) >= 200 && (status) < 500;
     },
 
     /**
      * The headers of the request.
      */
     headers: {
-        /**
-         * The `Content-Type` header.
-         */
+        // The `Content-Type` header.
         'Content-Type': 'application/json',
     },
 });
+
+// Add a response interceptor to handle errors
+apiClient.interceptors.response.use(
+    (response) => response,
+    (error: AxiosError) => {
+        if (error.response) {
+            console.error('API error:', error.response.status, error.response.data);
+            throw new Error(`API error: ${error.response.status}`);
+        } else if (error.request) {
+            console.error('No response received:', error.request);
+            throw new Error('No response received from the server');
+        } else {
+            console.error('Request error:', error.message);
+            throw new Error('Request error');
+        }
+    }
+);
+
