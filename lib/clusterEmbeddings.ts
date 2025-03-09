@@ -1,9 +1,5 @@
 // /lib/clusterEmbeddings.ts
 import { kmeans } from 'ml-kmeans';
-import { ollama } from "ollama-ai-provider"
-import { embedMany} from "ai"
-import { openai } from '@ai-sdk/openai';
-
 /**
  * Represents the result of clustering embeddings.
  * @property clusters - An array of cluster indices, where each index refers to the assigned cluster of the embedding at that index.
@@ -49,23 +45,13 @@ export function clusterEmbeddings(
         throw error;
     }
 }
-
-const embeddingModel = ollama.embedding('nomic-embed-text');
-
-const generateChunks = (input: string): string[] => {
-    return input
+export const generateChunks = (input: string): string[] => {
+    // Use a regex to split text on periods that appear to end a sentence.
+    // The regex looks for a period that is followed by whitespace and an uppercase letter,
+    // which helps avoid splitting at abbreviations or decimals.
+    // Note: Adjust the abbreviations list or regex as needed for your use case.
+    const sentences = input
         .trim()
-        .split('.')
-        .filter(i => i !== '');
-};
-
-export const generateEmbeddings = async (
-    value: string,
-): Promise<Array<{ embedding: number[]; content: string }>> => {
-    const chunks = generateChunks(value);
-    const { embeddings } = await embedMany({
-        model: embeddingModel,
-        values: chunks,
-    });
-    return embeddings.map((e, i) => ({ content: chunks[i], embedding: e }));
+        .split(/(?<!\b(?:Mr|Mrs|Ms|Dr|Prof|St|Sr|Jr))\.(?=\s+[A-Z])/);
+    return sentences.map(sentence => sentence.trim()).filter(sentence => sentence.length > 0);
 };

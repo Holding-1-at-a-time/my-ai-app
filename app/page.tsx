@@ -1,6 +1,5 @@
 // /app/page.tsx
 
-"use client";
 import React, { useState } from 'react';
 import { FormEvent } from 'react';
 import { generateEmbedding } from '../lib/generateEmbedding';
