@@ -1,5 +1,5 @@
 // /lib/generateEmbedding.ts
-import axios, { AxiosError } from 'axios';
+import axios from 'axios';
 
 /**
  * Generates an embedding for a given text using the Nomic Embeddings API.
