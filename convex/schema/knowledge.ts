@@ -8,13 +8,11 @@ export default defineSchema({
         title: v.string(),
         content: v.string(),
         embedding: v.array(v.float64()),
-        knowledgeEntries: v.union(v.array(
-            (
-                v.literal("title"),
-                v.literal("content"),
-                v.union(v.literal("embedding"), v.float64()),
-        )
-        )),
+        knowledgeEntries: v.union(v.array([
+            v.literal("title"),
+            v.literal("content"),
+            v.union(v.literal("embedding"), v.float64())
+        ])),
 
     })
         .vectorIndex("by_embedding", {
