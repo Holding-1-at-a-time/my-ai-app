@@ -20,10 +20,13 @@ export const createResource = async (input: NewResourceParams) => {
     } catch (e) {
         if (e instanceof Error)
             return e.message.length > 0 ? e.message : 'Error, please try again.';
+<<<<<<< HEAD
         else
             return 'An unknown error occurred.';
     }
 };
 
+=======
+>>>>>>> 85ed686 (Merge main branch and resolve conflicts)
     }
 };

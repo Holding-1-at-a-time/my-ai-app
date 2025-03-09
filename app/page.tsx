@@ -1,4 +1,5 @@
 // /app/page.tsx
+
 "use client";
 import React, { useState } from 'react';
 import { FormEvent } from 'react';
@@ -67,9 +68,36 @@ export default function HomePage() {
         <div style={{ color: 'red' }}>
           <h2>Error</h2>
           <p>{error}</p>
+    <main style={{ padding: '2rem' }}>
+      <h1>My Private AI Knowledge Base</h1>
+      <form onSubmit={onSubmit}>
+        <textarea
+          placeholder="Enter text here..."
+          value={inputText}
+          onChange={(e) => setInputText(e.target.value)}
+          rows={4}
+          cols={50}
+          required
+        />
+        <br />
+        <button type="submit">Generate Embedding</button>
+      </form>
+      {result && (
+        <div>
+          <h2>Generated Embedding</h2>
+          <pre>{JSON.stringify(result, null, 2)}</pre>
         </div>
+      )}
+      {error && (
+        <div style={{ color: 'red' }}>
+          <h2>Error</h2>
+          <p>{error}</p>
+        </div>
+      )}
+    </main>
       )}
     </main>
   );
 }
+
 
