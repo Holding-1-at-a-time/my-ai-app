@@ -4,16 +4,19 @@ import { v } from "convex/values";
 
 export default defineSchema({
     knowledgeEntries: defineTable({
-        id: v.string(),
         title: v.string(),
         content: v.string(),
         embedding: v.array(v.float64()),
-        knowledgeEntries: v.union(v.array([
-            v.literal("title"),
-            v.literal("content"),
-            v.union(v.literal("embedding"), v.float64())
-        ])),
-
+        url: v.string(),
+        knowledgeEntries: v.union(v.array(
+            v.object({
+                title: v.string(),
+                content: v.string(),
+                embedding: v.array(v.float64()),
+                url: v.string(),
+            })
+        )
+        ),
     })
         .vectorIndex("by_embedding", {
             vectorField: "embedding",
