@@ -2,10 +2,6 @@
 import { mutation } from "./_generated/server";
 import { generateEmbedding } from "../lib/generateEmbedding"
 
-export const add = mutation({
-    
-})
-
 export default mutation(async ({ db }, { title, content }: { title: string; content: string; }) => {
   const embedding = await generateEmbedding(content);
   return await db.insert("knowledgeEntry", { title, content, embedding });
