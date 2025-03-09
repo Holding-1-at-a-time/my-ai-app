@@ -1,6 +1,6 @@
     // /app/api/knowledge/route.ts
 import { NextResponse } from 'next/server';
-import { convexFetch } from '../../lib/convexClient';
+import { convexFetch } from '../../../lib/convexclient';
 
 // This endpoint could accept POST requests to add an entry and GET requests to search entries.
 export async function POST(request: Request) {

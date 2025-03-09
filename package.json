@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack --experimental-https",
+    "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
@@ -13,6 +13,7 @@
     "@ai-sdk/react": "^1.1.21",
     "ai": "^4.1.54",
     "axios": "^1.8.2",
+    "cheerio": "^1.0.0",
     "convex": "^1.19.5",
     "ml-kmeans": "^6.0.0",
     "next": "15.2.1",
