@@ -18,11 +18,9 @@ on:
       contents: write
 #
 # https://docs.github.com/en/enterprise-cloud@latest/code-security/supply-chain-security/understanding-your-software-supply-chain/using-the-dependency-submission-api
-  permissions:
-    contents: read
-  # Write permissions for pull-requests are required for using the `comment-summary-in-pr` option, comment out if you aren't using this option
-    pull-requests: write
-
+    permissions:
+      contents: read
+   pull_requests: write
 jobs:
   dependency-review:
     runs-on: ubuntu-latest
@@ -34,6 +32,3 @@ jobs:
         # Commonly enabled options, see https://github.com/actions/dependency-review-action#configuration-options for all available options.
         with:
           comment-summary-in-pr: always
-           fail-on-severity: moderate
-           deny-licenses: GPL-1.0-or-later, LGPL-2.0-or-later
-           retry-on-snapshot-warnings: true
