@@ -1,32 +1,94 @@
-// /lib/scraper.ts
-import axios from 'axios';
-import cheerio from 'cheerio';
+import axios from "axios"
+import * as cheerio from "cheerio"
+import puppeteer from "puppeteer"
 
-/**
- * Fetches a web page and extracts the title and main text content.
- * @param url - The page to scrape.
- * @returns An object containing the page title and aggregated text content.
- */
-export async function scrapeWebPage(url: string): Promise<{ title: string; content: string }> {
-    try {
-        const { data: html } = await axios.get(url);
-        const $ = cheerio.load(html);
-        const title = $('title').text().trim() || 'No Title';
+const MAX_WEBSITE_PAGES = 5
 
-        // Extract text in paragraphs.
-        let content = '';
-        $('p').each((_, element) => {
-            content += $(element).text().trim() + '\n';
-        });
-
-        // Fallback if <p> is not sufficient.
-        if (!content) {
-            content = $('body').text().trim();
-        }
-
-        return { title, content };
-    } catch (error) {
-        console.error('Error scraping page:', error);
-        throw new Error('Failed to scrape the webpage');
-    }
+async function staticScrape(url: string): Promise<string> {
+  try {
+    const response = await axios.get(url)
+    const html = response.data
+    const $ = cheerio.load(html)
+    return $("body").text()
+  } catch (error: any) {
+    console.error("Static scrape failed:", error.message)
+    throw new Error(`Static scrape failed: ${error.message}`)
+  }
 }
+
+async function dynamicScrape(url: string): Promise<string> {
+  let browser: puppeteer.Browser | null = null
+  try {
+    browser = await puppeteer.launch({
+      args: ["--no-sandbox"],
+    })
+    const page = await browser.newPage()
+    await page.goto(url, {
+      waitUntil: "networkidle2",
+      timeout: 30000,
+    })
+    return await page.evaluate(() => document.body.innerText)
+  } catch (error: any) {
+    console.error("Dynamic scrape failed:", error.message)
+    throw new Error(`Dynamic scrape failed: ${error.message}`)
+  } finally {
+    if (browser) {
+      await browser.close()
+    }
+  }
+}
+
+async function crawlWebsite(url: string, visited: Set<string> = new Set(), pageCount = 0): Promise<string> {
+  if (visited.has(url) || pageCount >= MAX_WEBSITE_PAGES) {
+    return ""
+  }
+
+  visited.add(url)
+  pageCount++
+
+  try {
+    const response = await axios.get(url)
+    const html = response.data
+    const $ = cheerio.load(html)
+    let allText = $("body").text() + "\n"
+
+    const links = $("a[href]")
+      .map((_, a) => $(a).attr("href"))
+      .get()
+      .map((link) => {
+        try {
+          return new URL(link, url).href
+        } catch {
+          return null
+        }
+      })
+      .filter((link) => link && link.startsWith(url)) as string[]
+
+    for (const link of links) {
+      allText += await crawlWebsite(link, visited, pageCount)
+    }
+
+    return allText
+  } catch (error: any) {
+    console.error(`Crawl failed for ${url}: ${error.message}`)
+    return ""
+  }
+}
+
+export async function scrape(url: string, mode: "page" | "website", useDynamic: boolean): Promise<string> {
+  try {
+    if (useDynamic) {
+      return await dynamicScrape(url)
+    } else {
+      if (mode === "page") {
+        return await staticScrape(url)
+      } else {
+        return await crawlWebsite(url)
+      }
+    }
+  } catch (error: any) {
+    console.error("Scrape failed:", error.message)
+    throw new Error(`Scrape failed: ${error.message}`)
+  }
+}
+

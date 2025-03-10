@@ -1,23 +1,28 @@
-// /app/api/scrape/route.ts
-import { NextResponse } from 'next/server';
-import { processAndEmbedPage } from '../../../lib/processPage';
-import { convexFetch } from '../../../lib/convexclient';
+import { type NextRequest, NextResponse } from "next/server"
+import { api } from "../../../convex/_generated/api"
+import { action } from "../../../convex/_generated/server"
 
-export async function POST(request: Request) {
-    const { url } = await request.json();
+export const maxDuration = 300
 
-    try {
-        // Process the URL by scraping it and generating its embedding.
-        const { title, content, embedding } = await processAndEmbedPage(url);
+export async function POST(req: NextRequest): Promise<NextResponse> {
+  const { url, mode, useDynamic } = await req.json()
 
-        // Store the entry in the Convex knowledge base.
-        const entryId = await convexFetch("addEntry", { title, content, embedding, url });
+  try {
+    const result = await action(api.knowledgeEntries.scrapeAndAddEntry)({
+      url: url,
+      mode: mode,
+      useDynamic: useDynamic,
+    })
 
-        return NextResponse.json({ success: true, entryId });
-    } catch (error: any) {
-        return NextResponse.json({
-            success: false,
-            error: error.message
-        }, { status: 500 });
+    if (result && typeof result === "object" && "success" in result && "message" in result) {
+      return NextResponse.json(result)
+    } else {
+      console.error("Unexpected result from scrapeAndAddEntry:", result)
+      return NextResponse.json({ success: false, message: "Unexpected error occurred." }, { status: 500 })
     }
+  } catch (error: any) {
+    console.error("API /scrape error:", error)
+    return NextResponse.json({ success: false, message: `API /scrape error: ${error.message}` }, { status: 500 })
+  }
 }
+
