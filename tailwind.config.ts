@@ -1,6 +1,6 @@
 // Import the required modules
 import tailwindcssAnimate from 'tailwindcss-animate';
-import type { Config } from 'tailwindcss';
+
 
 // Define the Tailwind CSS configuration
 export default {
@@ -141,4 +141,4 @@ export default {
 
 	// Add the animate plugin to the configuration
 	plugins: [tailwindcssAnimate],
-} satisfies Config;
+}

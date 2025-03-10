@@ -16,8 +16,7 @@ import type {
 import type * as addEntry from "../addEntry.js";
 import type * as ConvexClientProvider from "../ConvexClientProvider.js";
 import type * as getAllEntries from "../getAllEntries.js";
-import type * as knowledgeEntries from "../knowledgeEntries.js";
-import type * as schema_knowledge from "../schema/knowledge.js";
+import type * as KnowledgeEntries from "../KnowledgeEntries.js";
 
 /**
  * A utility for referencing Convex functions in your app's API.
@@ -31,8 +30,7 @@ declare const fullApi: ApiFromModules<{
   addEntry: typeof addEntry;
   ConvexClientProvider: typeof ConvexClientProvider;
   getAllEntries: typeof getAllEntries;
-  knowledgeEntries: typeof knowledgeEntries;
-  "schema/knowledge": typeof schema_knowledge;
+  KnowledgeEntries: typeof KnowledgeEntries;
 }>;
 export declare const api: FilterApi<
   typeof fullApi,
