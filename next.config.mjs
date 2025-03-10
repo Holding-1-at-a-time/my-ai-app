@@ -48,7 +48,7 @@ try {
   const imported = await import('./v0-user-next.config');
   userConfig = imported.default || imported;
 } catch (e) {
-  console.error('Failed to load user config:', e);
+  console.warn('User config not found, proceeding with default config:', e);
 }
 
 // Create final config by merging default with user config

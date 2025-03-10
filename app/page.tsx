@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useCallback } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -8,21 +8,29 @@ import { Switch } from "@/components/ui/switch"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { streamUI, useUIState } from "ai"
+import { streamText } from "ai"
 import { ollama } from "ollama-ai-provider"
 import { useToast } from "@/hooks/use-toast"
+import { v4 as uuidv4 } from "uuid"
 
 const STREAM_PROMPT = "Review the following knowledge base entries and provide insights:"
 const ENTRY_PROMPT = (title: string, content: string) => `Title: ${title}\nContent: ${content}\n`
 const OLLAMA_MODEL = "llama3:2"
 
+interface KnowledgeEntry {
+  title: string
+  url: string
+  content: string
+  embedding: number[]
+}
+
 interface SemanticGroup {
-  [groupName: string]: {
-    title: string
-    url: string
-    content: string
-    embedding: number[]
-  }[]
+  [groupName: string]: KnowledgeEntry[]
+}
+
+interface TextDeltaChunk {
+  type: "text-delta"
+  textDelta: string
 }
 
 const MODEL_PROMPT = (num: number) =>
@@ -32,23 +40,64 @@ export default function KnowledgeBase() {
   const [url, setUrl] = useState("")
   const [mode, setMode] = useState<"page" | "website">("page")
   const [useDynamic, setUseDynamic] = useState(false)
-  const [knowledgeEntries, setKnowledgeEntries] = useState<any[]>([])
+  const [knowledgeEntries, setKnowledgeEntries] = useState<KnowledgeEntry[]>([])
   const [categorizedResults, setCategorizedResults] = useState<SemanticGroup | null>(null)
   const [annotation, setAnnotation] = useState<string>("")
   const [loading, setLoading] = useState(false)
+  const [streamingThoughts, setStreamingThoughts] = useState<string>("")
   const { toast } = useToast()
 
-  const { setUIState, ui } = useUIState()
+  // Fetch knowledge entries on load
+  useEffect(() => {
+    fetchKnowledgeEntries()
+  }, [])
+
+  const fetchKnowledgeEntries = async () => {
+    try {
+      const response = await fetch("/api/entries", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      })
+
+      const data = await response.json()
+
+      // Check if the response contains entries or if it's an error response
+      if (data.success === false) {
+        console.error("Failed to fetch knowledge entries:", data.message)
+        toast({
+          variant: "destructive",
+          title: "Error fetching entries",
+          description: data.message,
+        })
+        setKnowledgeEntries([])
+      } else {
+        // If it's a successful response with entries
+        setKnowledgeEntries(Array.isArray(data) ? data : data.entries || [])
+      }
+    } catch (error: any) {
+      console.error("Failed to fetch knowledge entries:", error.message)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to fetch knowledge entries. Please try again.",
+      })
+      setKnowledgeEntries([])
+    }
+  }
 
   const handleScrape = async () => {
     setLoading(true)
     try {
+      const requestId = uuidv4() // Generate a unique request ID
+
       const response = await fetch("/api/scrape", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ url, mode, useDynamic }),
+        body: JSON.stringify({ url, mode, useDynamic, requestId }),
       })
 
       const result = await response.json()
@@ -66,6 +115,13 @@ export default function KnowledgeBase() {
           description: result.message,
         })
       }
+    } catch (error: any) {
+      console.error("Scrape failed:", error)
+      toast({
+        variant: "destructive",
+        title: "Error!",
+        description: error.message || "An error occurred while scraping",
+      })
     } finally {
       setLoading(false)
     }
@@ -74,11 +130,14 @@ export default function KnowledgeBase() {
   const handleCategorize = async () => {
     setLoading(true)
     try {
+      const requestId = uuidv4() // Generate a unique request ID
+
       const response = await fetch("/api/categorize", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
+        body: JSON.stringify({ requestId }),
       })
 
       const result = await response.json()
@@ -94,29 +153,21 @@ export default function KnowledgeBase() {
         toast({
           variant: "destructive",
           title: "Error!",
-          description: result.message,
+          description: result.message || "Failed to categorize entries",
         })
         setCategorizedResults(null)
       }
+    } catch (error: any) {
+      console.error("Categorize failed:", error)
+      toast({
+        variant: "destructive",
+        title: "Error!",
+        description: error.message || "An error occurred while categorizing",
+      })
     } finally {
       setLoading(false)
     }
   }
-
-  const fetchKnowledgeEntries = useCallback(async () => {
-    try {
-      const response = await fetch("/api/entries", {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      })
-      const entries = await response.json()
-      setKnowledgeEntries(entries)
-    } catch (error: any) {
-      console.error("Failed to fetch knowledge entries:", error.message)
-    }
-  }, [])
 
   const generateAnnotations = async (categorizedResults: SemanticGroup) => {
     let combinedEntries = ""
@@ -131,23 +182,25 @@ export default function KnowledgeBase() {
 
     try {
       const model = ollama(OLLAMA_MODEL)
-      const annotationStream = streamUI(
-        {
-          model: model,
-          prompt: `${STREAM_PROMPT}\n${combinedEntries}\n${MODEL_PROMPT(count)}`,
+
+      // Use streamText
+      const stream = streamText({
+        model: model,
+        prompt: `${STREAM_PROMPT}\n${combinedEntries}\n${MODEL_PROMPT(count)}`,
+        onChunk: (data) => {
+          if (data.chunk.type === "text-delta") {
+            const textChunk = data.chunk as TextDeltaChunk
+            setStreamingThoughts((prev) => prev + textChunk.textDelta)
+          }
         },
-        { setUIState },
-      )
-      const result = await annotationStream.text()
+      })
+
+      const result = await stream.text
       setAnnotation(result)
     } catch (error: any) {
       console.error("Generating annotations failed:", error)
     }
   }
-
-  React.useEffect(() => {
-    fetchKnowledgeEntries()
-  }, [fetchKnowledgeEntries])
 
   return (
     <div className="container mx-auto p-4">
@@ -200,16 +253,10 @@ export default function KnowledgeBase() {
               <AlertDescription>{annotation}</AlertDescription>
             </Alert>
             <div className="mt-4">
-              {ui.thoughts && (
+              {streamingThoughts && (
                 <div className="mt-2">
                   <strong>AI's Thoughts:</strong>
-                  <p>{ui.thoughts}</p>
-                </div>
-              )}
-              {ui.actions && (
-                <div className="mt-2">
-                  <strong>AI's Proposed Actions:</strong>
-                  <p>{ui.actions}</p>
+                  <p>{streamingThoughts}</p>
                 </div>
               )}
             </div>
@@ -248,6 +295,32 @@ export default function KnowledgeBase() {
                 </AccordionItem>
               ))}
             </Accordion>
+          </CardContent>
+        </Card>
+      )}
+
+      {knowledgeEntries.length > 0 && !categorizedResults && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Knowledge Entries</CardTitle>
+            <CardDescription>All scraped knowledge entries.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-2">
+              {knowledgeEntries.map((entry, index) => (
+                <li key={index} className="border-b pb-2">
+                  <a
+                    href={entry.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-500 hover:underline font-medium"
+                  >
+                    {entry.title}
+                  </a>
+                  <p className="text-sm text-gray-500 mt-1">{entry.content.substring(0, 150)}...</p>
+                </li>
+              ))}
+            </ul>
           </CardContent>
         </Card>
       )}
