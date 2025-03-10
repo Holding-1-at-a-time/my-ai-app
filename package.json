@@ -47,8 +47,10 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": [
+      "esbuild",
       "msw",
-      "puppeteer"
+      "puppeteer",
+      "sharp"
     ]
   }
 }

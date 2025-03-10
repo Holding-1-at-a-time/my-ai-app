@@ -1,5 +1,5 @@
 // /lib/generateEmbedding.ts
-import axios from 'axios';
+import axios, { AxiosError, AxiosResponse } from 'axios';
 
 /**
  * Generates an embedding for a given text using the Nomic Embeddings API.
@@ -10,7 +10,7 @@ import axios from 'axios';
 export async function generateEmbedding(text: string): Promise<number[]> {
     try {
         // Make a POST request to the Nomic Embeddings API
-        const response = await axios.post(
+        const response: AxiosResponse<number[]> = await axios.post(
             // Use the base URL from the environment variable
             `${process.env.OLLAMA_BASE_URL}/embed`,
             {
@@ -22,7 +22,11 @@ export async function generateEmbedding(text: string): Promise<number[]> {
         );
 
         // Extract the embedding from the response
-        const embedding: number[] = response.data.embedding;
+        const embedding: number[] | undefined = response.data;
+
+        if (!embedding) {
+            throw new Error('No embedding returned from the API');
+        }
 
         // Return the generated embedding
         return embedding;
@@ -30,6 +34,12 @@ export async function generateEmbedding(text: string): Promise<number[]> {
         if (axios.isAxiosError(error)) {
             // If the error is an AxiosError, log the error message
             console.error('Embedding generation failed:', error.message);
+
+            // If the error is an AxiosError, check if it has a response property
+            if (error.response) {
+                // If the error has a response property, log the response data
+                console.error('Embedding generation failed:', error.response.data);
+            }
         } else {
             // If the error is not an AxiosError, log the error object
             console.error('Embedding generation failed:', error);

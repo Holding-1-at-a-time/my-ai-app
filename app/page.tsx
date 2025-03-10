@@ -8,8 +8,8 @@ import { Switch } from "@/components/ui/switch"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { streamUI, useUIState } from "ai"
-import { ollama } from "ollama-ai-provider"
+import { streamText } from "ai" // Correct imports from the AI SDK
+import { ollama } from "ollama-ai-provider" // Correct import for ollama
 import { useToast } from "@/hooks/use-toast"
 
 const STREAM_PROMPT = "Review the following knowledge base entries and provide insights:"
@@ -36,9 +36,8 @@ export default function KnowledgeBase() {
   const [categorizedResults, setCategorizedResults] = useState<SemanticGroup | null>(null)
   const [annotation, setAnnotation] = useState<string>("")
   const [loading, setLoading] = useState(false)
+  const [streamingThoughts, setStreamingThoughts] = useState<string>("")
   const { toast } = useToast()
-
-  const { setUIState, ui } = useUIState()
 
   const handleScrape = async () => {
     setLoading(true)
@@ -131,14 +130,19 @@ export default function KnowledgeBase() {
 
     try {
       const model = ollama(OLLAMA_MODEL)
-      const annotationStream = streamUI(
-        {
-          model: model,
-          prompt: `${STREAM_PROMPT}\n${combinedEntries}\n${MODEL_PROMPT(count)}`,
+
+      // Use streamText instead of streamUI
+      const stream = streamText({
+        model: model,
+        prompt: `${STREAM_PROMPT}\n${combinedEntries}\n${MODEL_PROMPT(count)}`,
+        onChunk: (chunk) => {
+          if (chunk.type === "text-delta") {
+            setStreamingThoughts((prev) => prev + chunk.text)
+          }
         },
-        { setUIState },
-      )
-      const result = await annotationStream.text()
+      })
+
+      const result = await stream.text
       setAnnotation(result)
     } catch (error: any) {
       console.error("Generating annotations failed:", error)
@@ -200,16 +204,10 @@ export default function KnowledgeBase() {
               <AlertDescription>{annotation}</AlertDescription>
             </Alert>
             <div className="mt-4">
-              {ui.thoughts && (
+              {streamingThoughts && (
                 <div className="mt-2">
                   <strong>AI's Thoughts:</strong>
-                  <p>{ui.thoughts}</p>
-                </div>
-              )}
-              {ui.actions && (
-                <div className="mt-2">
-                  <strong>AI's Proposed Actions:</strong>
-                  <p>{ui.actions}</p>
+                  <p>{streamingThoughts}</p>
                 </div>
               )}
             </div>

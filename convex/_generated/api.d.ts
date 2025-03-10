@@ -15,6 +15,8 @@ import type {
 } from "convex/server";
 import type * as addEntry from "../addEntry.js";
 import type * as ConvexClientProvider from "../ConvexClientProvider.js";
+import type * as getAllEntries from "../getAllEntries.js";
+import type * as knowledgeEntries from "../knowledgeEntries.js";
 import type * as schema_knowledge from "../schema/knowledge.js";
 
 /**
@@ -28,6 +30,8 @@ import type * as schema_knowledge from "../schema/knowledge.js";
 declare const fullApi: ApiFromModules<{
   addEntry: typeof addEntry;
   ConvexClientProvider: typeof ConvexClientProvider;
+  getAllEntries: typeof getAllEntries;
+  knowledgeEntries: typeof knowledgeEntries;
   "schema/knowledge": typeof schema_knowledge;
 }>;
 export declare const api: FilterApi<

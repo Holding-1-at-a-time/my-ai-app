@@ -1,11 +1,10 @@
-import { ollama } from "ollama-ai-provider"
 import { v } from "convex/values"
 import { action, mutation, query, internalAction } from "./_generated/server"
+import { internal } from "./_generated/api"
+import { api } from "./_generated/api"
 import { rateLimiter } from "../lib/rate-limit"
 import { scrape } from "../lib/scraper"
 import { semanticSearch } from "../lib/semantic-search"
-import { api } from "./_generated/api"
-import { internal } from "./_generated/api"
 
 const EMBEDDING_MODEL = "nomic-embed-text"
 const OLLAMA_MODEL = "llama3:2"
@@ -40,11 +39,12 @@ export const scrapeAndAddEntry = action({
     url: v.string(),
     mode: v.string(),
     useDynamic: v.boolean(),
+    requestId: v.string(), // Use a requestId instead of ipAddress for rate limiting
   },
   handler: async (ctx, args) => {
-    const rateLimitResult = rateLimiter.isWithinLimit(ctx.ipAddress)
+    const rateLimitResult = rateLimiter.isWithinLimit(args.requestId)
     if (!rateLimitResult) {
-      console.warn("Rate limit exceeded for IP: ", ctx.ipAddress)
+      console.warn("Rate limit exceeded for request ID: ", args.requestId)
       return {
         success: false,
         message: "Rate limit exceeded. Please try again later.",
@@ -53,10 +53,10 @@ export const scrapeAndAddEntry = action({
 
     try {
       const scrapedContent = await scrape(args.url, args.mode as "page" | "website", args.useDynamic)
-      const embeddingModel = ollama.embedding(EMBEDDING_MODEL)
-      const { embedding } = await ctx.runAction(internal.createEmbedding, {
+
+      // Call the createEmbedding internal action
+      const { embedding } = await ctx.runAction(internal.knowledgeEntries.createEmbedding, {
         text: scrapedContent,
-        embeddingModel,
       })
 
       await ctx.runMutation(api.knowledgeEntries.addEntry, {
@@ -75,11 +75,13 @@ export const scrapeAndAddEntry = action({
 })
 
 export const categorizeEntries = action({
-  args: {},
+  args: {
+    requestId: v.string(), // Use a requestId instead of ipAddress for rate limiting
+  },
   handler: async (ctx, args) => {
-    const rateLimitResult = rateLimiter.isWithinLimit(ctx.ipAddress)
+    const rateLimitResult = rateLimiter.isWithinLimit(args.requestId)
     if (!rateLimitResult) {
-      console.warn("Rate limit exceeded for IP: ", ctx.ipAddress)
+      console.warn("Rate limit exceeded for request ID: ", args.requestId)
       return {
         success: false,
         message: "Rate limit exceeded. Please try again later.",
@@ -88,17 +90,16 @@ export const categorizeEntries = action({
 
     try {
       const knowledgeEntries = await ctx.runQuery(api.knowledgeEntries.getAllEntries)
-      const allEmbeddings = knowledgeEntries.map((entry) => entry.embedding)
 
       if (knowledgeEntries.length === 0) {
         return { success: false, message: "No knowledge entries found." }
       }
 
       const representativeEntry = knowledgeEntries[0]
-      const embeddingModel = ollama.embedding(EMBEDDING_MODEL)
-      const { embedding: representativeEmbedding } = await ctx.runAction(internal.createEmbedding, {
+
+      // Call the createEmbedding internal action
+      const { embedding: representativeEmbedding } = await ctx.runAction(internal.knowledgeEntries.createEmbedding, {
         text: representativeEntry.content,
-        embeddingModel,
       })
 
       const groupedEntries = await semanticSearch(knowledgeEntries, representativeEmbedding)
@@ -114,18 +115,30 @@ export const categorizeEntries = action({
 export const createEmbedding = internalAction({
   args: {
     text: v.string(),
-    embeddingModel: v.any(),
   },
   handler: async (ctx, args) => {
     try {
-      const model = args.embeddingModel
-      const { embedding } = await ollama.embedding("nomic-embed-text").embed({
-        value: args.text,
+      // Use the Ollama API to generate embeddings
+      const response = await fetch(`${process.env.OLLAMA_BASE_URL}/api/embeddings`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: EMBEDDING_MODEL,
+          prompt: args.text,
+        }),
       })
-      return { success: true, embedding }
+
+      if (!response.ok) {
+        throw new Error(`Ollama API returned ${response.status}: ${await response.text()}`)
+      }
+
+      const data = await response.json()
+      return { success: true, embedding: data.embedding }
     } catch (error: any) {
       console.error("Embedding creation failed:", error)
-      throw new Error(`Embedding creation failed: ${error}`)
+      throw new Error(`Embedding creation failed: ${error.message}`)
     }
   },
 })

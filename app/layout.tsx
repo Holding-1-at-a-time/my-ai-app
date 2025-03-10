@@ -1,20 +1,20 @@
-import type { Metadata } from 'next'
-import './globals.css'
+// /app/layout.tsx
+import { AIProvider } from './ai-provider';
+import './globals.css';
 
-export const metadata: Metadata = {
-  title: 'v0 App',
-  description: 'Created with v0',
-  generator: 'v0.dev',
-}
+export const metadata = {
+  title: 'My AI App',
+  description: 'Private AI Knowledge Base Application',
+};
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode
-}>) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <AIProvider>
+          {children}
+        </AIProvider>
+      </body>
     </html>
-  )
+  );
 }
