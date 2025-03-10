@@ -13,10 +13,11 @@ import type {
   FilterApi,
   FunctionReference,
 } from "convex/server";
-import type * as addEntry from "../addEntry.js";
 import type * as ConvexClientProvider from "../ConvexClientProvider.js";
-import type * as getAllEntries from "../getAllEntries.js";
-import type * as KnowledgeEntries from "../KnowledgeEntries.js";
+import type * as dev from "../dev.js";
+import type * as knowledgeEntries from "../knowledgeEntries.js";
+import type * as ollama from "../ollama.js";
+import type * as scraper from "../scraper.js";
 
 /**
  * A utility for referencing Convex functions in your app's API.
@@ -27,10 +28,11 @@ import type * as KnowledgeEntries from "../KnowledgeEntries.js";
  * ```
  */
 declare const fullApi: ApiFromModules<{
-  addEntry: typeof addEntry;
   ConvexClientProvider: typeof ConvexClientProvider;
-  getAllEntries: typeof getAllEntries;
-  KnowledgeEntries: typeof KnowledgeEntries;
+  dev: typeof dev;
+  knowledgeEntries: typeof knowledgeEntries;
+  ollama: typeof ollama;
+  scraper: typeof scraper;
 }>;
 export declare const api: FilterApi<
   typeof fullApi,

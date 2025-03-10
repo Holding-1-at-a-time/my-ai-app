@@ -33,7 +33,16 @@
     "next-env.d.ts",
     "**/*.ts",
     "**/*.tsx",
-    ".next/types/**/*.ts"
+    ".next/types/**/*.ts",
+    "lib/.clusterEmbeddings.ts",
+    "lib/.apiClient.ts",
+    "lib/.convexclient.ts",
+    "lib/.generateEmbedding.ts",
+    "lib/.rateLimit.ts",
+    "lib/.ollama.ts",
+    "lib/.processPage.ts",
+    "lib/.semanticSearch.ts",
+    "lib/.theme-provider.tsx"
   ],
   "exclude": [
     "node_modules"
