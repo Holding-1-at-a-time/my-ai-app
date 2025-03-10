@@ -135,9 +135,9 @@ export default function KnowledgeBase() {
       const stream = streamText({
         model: model,
         prompt: `${STREAM_PROMPT}\n${combinedEntries}\n${MODEL_PROMPT(count)}`,
-        onChunk: (chunk) => {
-          if (chunk.type === "text-delta") {
-            setStreamingThoughts((prev) => prev + chunk.text)
+        onChunk: (data) => {
+          if (data.chunk.type === "text-delta" && "textDelta" in data.chunk) {
+            setStreamingThoughts((prev) => prev + data.chunk)
           }
         },
       })
